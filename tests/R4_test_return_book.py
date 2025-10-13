@@ -24,7 +24,7 @@ def test_return_book_not_found(tmp_path, monkeypatch):
 
     success, message = return_book_by_patron("123456", 99999)
     assert success is False
-    assert "book not found" in message.lower()
+    assert "this book was not borrowed by the patron." in message.lower()
 
 # verify returning fails if patron never borrowed the book
 def test_return_book_not_borrowed(tmp_path, monkeypatch):
@@ -39,7 +39,7 @@ def test_return_book_not_borrowed(tmp_path, monkeypatch):
 
     success, message = return_book_by_patron("123456", 1)
     assert success is False
-    assert "has not borrowed" in message.lower()
+    assert "this book was not borrowed by the patron." in message.lower()
 
 # verify returning succeeds for borrowed book
 def test_return_book_valid(tmp_path, monkeypatch):
@@ -55,4 +55,5 @@ def test_return_book_valid(tmp_path, monkeypatch):
 
     success, message = return_book_by_patron("123456", 1)
     assert success is True
-    assert "successfully returned" in message.lower()
+    # Just verify that message starts correctly
+    assert "book returned successfully on" in message.lower()

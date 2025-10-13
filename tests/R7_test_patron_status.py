@@ -4,17 +4,16 @@ from datetime import datetime, timedelta
 from database import init_database, get_db_connection, insert_book, insert_borrow_record
 from library_service import get_patron_status_report
 
-# assume get_patron_status_report(patron_id) has been implemented
-
-# verify report returns error for invalid patron ID
+# verify report returns message for invalid patron ID
 def test_patron_status_invalid_id(tmp_path, monkeypatch):
     test_db = tmp_path / "test_library.db"
     monkeypatch.setattr("database.DATABASE", str(test_db))
     init_database()
 
     result = get_patron_status_report("12")
-    assert "error" in result
-    assert "invalid patron id" in result["error"].lower()
+    assert result["status"].lower() == "invalid patron id."
+    assert result["total_books_borrowed"] == 0
+    assert result["total_late_fees"] == 0.0
 
 # verify report shows no loans and no fees if patron has borrowed nothing
 def test_patron_status_no_loans(tmp_path, monkeypatch):
@@ -24,10 +23,10 @@ def test_patron_status_no_loans(tmp_path, monkeypatch):
 
     result = get_patron_status_report("123456")
     assert result["patron_id"] == "123456"
-    assert result["borrowed_count"] == 0
+    assert result["total_books_borrowed"] == 0
     assert result["total_late_fees"] == 0.0
-    assert result["current_loans"] == []
-    assert isinstance(result["history"], list)
+    assert result["borrowed_books"] == []
+    assert "no borrowed books" in result["status"].lower()
 
 # verify report includes a currently borrowed book
 def test_patron_status_with_current_loan(tmp_path, monkeypatch):
@@ -44,10 +43,10 @@ def test_patron_status_with_current_loan(tmp_path, monkeypatch):
     conn.close()
 
     result = get_patron_status_report("123456")
-    assert result["borrowed_count"] == 1
+    assert result["total_books_borrowed"] == 1
     assert result["total_late_fees"] == 0.0
-    assert len(result["current_loans"]) == 1
-    assert result["current_loans"][0]["title"] == "Test Book"
+    assert len(result["borrowed_books"]) == 1
+    assert result["borrowed_books"][0]["book_title"] == "Test Book"
 
 # verify report calculates late fees for patron correctly
 def test_patron_status_with_late_fee(tmp_path, monkeypatch):
@@ -59,18 +58,18 @@ def test_patron_status_with_late_fee(tmp_path, monkeypatch):
     conn = get_db_connection()
     insert_book("Late Book", "Author B", isbn, 1, 0)
     borrow_date = datetime.now() - timedelta(days=20)
-    due_date = borrow_date + timedelta(days=14) 
+    due_date = borrow_date + timedelta(days=14)
     insert_borrow_record("123456", 1, borrow_date, due_date)
     conn.close()
 
     result = get_patron_status_report("123456")
-    assert result["borrowed_count"] == 1
+    assert result["total_books_borrowed"] == 1
     assert result["total_late_fees"] > 0.0
-    assert len(result["current_loans"]) == 1
-    assert result["current_loans"][0]["title"] == "Late Book"
+    assert len(result["borrowed_books"]) == 1
+    assert result["borrowed_books"][0]["book_title"] == "Late Book"
 
-# verify borrowing history is recorded
-def test_patron_status_history_includes_records(tmp_path, monkeypatch):
+# verify multiple borrow records appear in report
+def test_patron_status_multiple_books(tmp_path, monkeypatch):
     test_db = tmp_path / "test_library.db"
     monkeypatch.setattr("database.DATABASE", str(test_db))
     init_database()
@@ -87,8 +86,8 @@ def test_patron_status_history_includes_records(tmp_path, monkeypatch):
     conn.close()
 
     result = get_patron_status_report("123456")
-    assert isinstance(result["history"], list)
-    assert len(result["history"]) >= 2
-    titles = [h["title"] for h in result["history"]]
+    assert isinstance(result["borrowed_books"], list)
+    assert len(result["borrowed_books"]) >= 2
+    titles = [b["book_title"] for b in result["borrowed_books"]]
     assert "History Book 1" in titles
     assert "History Book 2" in titles

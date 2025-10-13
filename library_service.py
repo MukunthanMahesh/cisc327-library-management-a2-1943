@@ -160,20 +160,139 @@ def calculate_late_fee_for_book(patron_id: str, book_id: int) -> Dict:
         'status': 'Late fee calculation not implemented'
     }
     """
+    # Retrieve all books borrowed by this patron
+    borrowed_books = get_patron_borrowed_books(patron_id)
+    record = next((b for b in borrowed_books if b['book_id'] == book_id), None)
+
+    # If no borrow record found
+    if not record:
+        return {
+            'fee_amount': 0.00,
+            'days_overdue': 0,
+            'status': 'Borrow record not found.'
+        }
+
+    due_date = record['due_date']
+    # If returned, use recorded return date; else, assume not yet returned (use current time)
+    return_date = record.get('return_date') or datetime.now()
+
+    # No late fee if returned before or on due date
+    if return_date <= due_date:
+        return {
+            'fee_amount': 0.00,
+            'days_overdue': 0,
+            'status': 'No late fee.'
+        }
+
+    # Calculate overdue
+    days_overdue = (return_date - due_date).days
+    fee = round(days_overdue * 0.50, 2)
+
+    return {
+        'fee_amount': fee,
+        'days_overdue': days_overdue,
+        'status': 'Late fee applied.'
+    }
 
 def search_books_in_catalog(search_term: str, search_type: str) -> List[Dict]:
     """
     Search for books in the catalog.
+    Implements R6: Catalog Search
+
+    Args:
+        search_term (str): The keyword to search for.
+        search_type (str): One of ['title', 'author', 'isbn'].
     
-    TODO: Implement R6 as per requirements
+    Returns:
+        List[Dict]: A list of matching books.
     """
-    
-    return []
+    # Retrieve all books from the database
+    books = get_all_books()
+
+    # Validate inputs
+    if not search_term or not search_term.strip():
+        return books 
+    if search_type not in ['title', 'author', 'isbn']:
+        return []     
+
+    search_term = search_term.strip().lower()
+    results = []
+
+    for book in books:
+        # Defensive: skip malformed records
+        if not isinstance(book, dict):
+            continue
+
+        if search_type == 'title' and search_term in book.get('title', '').lower():
+            results.append(book)
+        elif search_type == 'author' and search_term in book.get('author', '').lower():
+            results.append(book)
+        elif search_type == 'isbn' and search_term in book.get('isbn', '').lower():
+            results.append(book)
+
+    return results
 
 def get_patron_status_report(patron_id: str) -> Dict:
     """
-    Get status report for a patron.
+    Generate a status report for a patron.
+    Implements R7: Patron Status Report
+
+    Args:
+        patron_id (str): 6-digit library card ID.
     
-    TODO: Implement R7 as per requirements
+    Returns:
+        Dict containing:
+            - patron_id
+            - borrowed_books (list of dicts)
+            - total_books_borrowed (int)
+            - overdue_count (int)
+            - total_late_fees (float)
     """
-    return {}
+    # Validate patron ID
+    if not patron_id or not patron_id.isdigit() or len(patron_id) != 6:
+        return {
+            "patron_id": patron_id,
+            "borrowed_books": [],
+            "total_books_borrowed": 0,
+            "overdue_count": 0,
+            "total_late_fees": 0.0,
+            "status": "Invalid patron ID."
+        }
+
+    borrowed_books = get_patron_borrowed_books(patron_id)
+    if not borrowed_books:
+        return {
+            "patron_id": patron_id,
+            "borrowed_books": [],
+            "total_books_borrowed": 0,
+            "overdue_count": 0,
+            "total_late_fees": 0.0,
+            "status": "No borrowed books."
+        }
+
+    total_late_fees = 0.0
+    overdue_count = 0
+    detailed_books = []
+
+    for record in borrowed_books:
+        fee_info = calculate_late_fee_for_book(patron_id, record['book_id'])
+        fee = fee_info['fee_amount']
+        total_late_fees += fee
+        if fee_info['days_overdue'] > 0:
+            overdue_count += 1
+
+        detailed_books.append({
+            "book_title": record.get("title", "Unknown"),
+            "due_date": record["due_date"].strftime("%Y-%m-%d"),
+            "return_date": record["return_date"].strftime("%Y-%m-%d") if record.get("return_date") else None,
+            "fee_amount": fee
+        })
+
+    return {
+        "patron_id": patron_id,
+        "borrowed_books": detailed_books,
+        "total_books_borrowed": len(borrowed_books),
+        "overdue_count": overdue_count,
+        "total_late_fees": round(total_late_fees, 2),
+        "status": "Report generated successfully."
+    }
