@@ -104,10 +104,48 @@ def borrow_book_by_patron(patron_id: str, book_id: int) -> Tuple[bool, str]:
 def return_book_by_patron(patron_id: str, book_id: int) -> Tuple[bool, str]:
     """
     Process book return by a patron.
+    Implements R4: Return Management
     
-    TODO: Implement R4 as per requirements
+    Args:
+        patron_id: 6-digit library card ID
+        book_id: ID of the borrowed book
+        
+    Returns:
+        tuple: (success: bool, message: str)
     """
-    return False, "Book return functionality is not yet implemented."
+    # Validate patron ID
+    if not patron_id or not patron_id.isdigit() or len(patron_id) != 6:
+        return False, "Invalid patron ID. Must be exactly 6 digits."
+    
+    # Check if the patron actually borrowed the book
+    borrowed_books = get_patron_borrowed_books(patron_id)
+    borrowed_book_ids = [b['book_id'] for b in borrowed_books]
+    if book_id not in borrowed_book_ids:
+        return False, "This book was not borrowed by the patron."
+    
+    # Find borrow record
+    borrow_record = next((b for b in borrowed_books if b['book_id'] == book_id), None)
+    if not borrow_record:
+        return False, "Borrow record not found."
+    
+    # Update return date
+    return_date = datetime.now()
+    updated = update_borrow_record_return_date(patron_id, book_id, return_date)
+    if not updated:
+        return False, "Failed to update return record."
+    
+    # Increment available copies
+    updated_copies = update_book_availability(book_id, +1)
+    if not updated_copies:
+        return False, "Failed to update book availability."
+    
+    # Check for lateness
+    due_date = borrow_record['due_date']
+    if return_date > due_date:
+        overdue_days = (return_date - due_date).days
+        return True, f'Book returned late by {overdue_days} days. Please check for late fees.'
+    
+    return True, f'Book returned successfully on {return_date.strftime("%Y-%m-%d")}.'
 
 def calculate_late_fee_for_book(patron_id: str, book_id: int) -> Dict:
     """
