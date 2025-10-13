@@ -27,6 +27,9 @@ jobs:
       - name: Install dependencies
         run: python -m pip install pytest
 
+      - name: Initialize database
+        run: python -c "from database import init_database; init_database()"
+        
       - name: Run tests
         run: pytest
         
