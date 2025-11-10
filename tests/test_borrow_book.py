@@ -1,7 +1,7 @@
 import pytest
 import random
 from database import init_database, get_db_connection
-from library_service import borrow_book_by_patron
+from services.library_service import borrow_book_by_patron
 
 # verify borrowing fails if book has zero available copies
 def test_borrow_book_no_availability(tmp_path, monkeypatch):

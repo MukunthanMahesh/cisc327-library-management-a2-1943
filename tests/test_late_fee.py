@@ -2,7 +2,7 @@ import pytest
 import random
 from datetime import datetime, timedelta
 from database import init_database, get_db_connection, insert_book, insert_borrow_record
-from library_service import calculate_late_fee_for_book
+from services.library_service import calculate_late_fee_for_book
 
 # verify no late fee if book is returned before due date
 def test_late_fee_no_overdue(tmp_path, monkeypatch):

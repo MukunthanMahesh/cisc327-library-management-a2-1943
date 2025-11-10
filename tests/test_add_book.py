@@ -1,6 +1,6 @@
 import pytest
 import random
-from library_service import add_book_to_catalog
+from services.library_service import add_book_to_catalog
 
 # verify adding a book with overly long title fails
 def test_add_book_long_title():

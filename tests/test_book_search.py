@@ -1,7 +1,7 @@
 import pytest
 import random
 from database import init_database, get_db_connection, insert_book
-from library_service import search_books_in_catalog
+from services.library_service import search_books_in_catalog
 
 # assume search_books_in_catalog(search_term, search_type) has been implemented
 

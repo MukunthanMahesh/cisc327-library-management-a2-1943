@@ -2,7 +2,7 @@ import pytest
 import random
 from datetime import datetime, timedelta
 from database import init_database, get_db_connection, insert_book, insert_borrow_record
-from library_service import return_book_by_patron
+from services.library_service import return_book_by_patron
 
 # assuming return_book_by_patron(patron_id, book_id) has been implemented 
 

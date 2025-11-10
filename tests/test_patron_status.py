@@ -2,7 +2,7 @@ import pytest
 import random
 from datetime import datetime, timedelta
 from database import init_database, get_db_connection, insert_book, insert_borrow_record
-from library_service import get_patron_status_report
+from services.library_service import get_patron_status_report
 
 # verify report returns message for invalid patron ID
 def test_patron_status_invalid_id(tmp_path, monkeypatch):
