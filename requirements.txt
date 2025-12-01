@@ -1,2 +1,4 @@
 Flask==2.3.3
 pytest==7.4.2
+playwright>=1.40.0
+requests>=2.31.0
