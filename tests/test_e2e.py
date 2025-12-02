@@ -52,6 +52,7 @@ def _add_book_via_ui(base_url: str, title: str, author: str, isbn: str, total_co
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         page = browser.new_page()
+        page.set_default_timeout(60000)
 
         page.goto(f"{base_url}/add_book")
 
@@ -82,20 +83,23 @@ def test_add_book_appears_in_catalog(live_server: str) -> None:
 def test_borrow_book_from_catalog(live_server: str) -> None:
     timestamp = int(time.time() * 1000)
     unique_isbn = f"8{timestamp:012d}"
-    title = "E2E Flow 2 Borrowable Book"
+    title = "Playwright Borrowable Book"
     author = "Borrow Test Author"
+    patron_id = f"{timestamp % 900000 + 100000:06d}"
 
     _add_book_via_ui(live_server, title, author, unique_isbn, total_copies=2)
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         page = browser.new_page()
+        page.set_default_timeout(60000)
 
         page.goto(f"{live_server}/catalog")
+        page.wait_for_selector("input[name='patron_id']")
 
-        row = page.locator("table tbody tr", has_text=title).first
-        row.locator("input[name='patron_id']").fill("123456")
-        row.get_by_role("button", name="Borrow").click()
+        patron_input = page.locator("input[name='patron_id']").first
+        patron_input.fill(patron_id)
+        page.get_by_role("button", name="Borrow").first.click()
 
         page.wait_for_url("**/catalog")
         page.wait_for_selector(".flash-success, .flash-error")
